@@ -27,7 +27,7 @@ def local_stock_data(ticker, augments=[add_percentages, add_sma]):
     :return: Pandas dataframe for the ticker
     """
     ticker = ticker.upper()
-    filename = os.path.expanduser(f"~/dev/investing/.data/{ticker}.csv")
+    filename = os.path.expanduser(f"~/dev/contextual-investing/.data/{ticker}.csv")
     if os.path.exists(filename):
         data = pd.read_csv(filename, index_col='date', parse_dates=True)
     else:
