@@ -6,8 +6,6 @@ import numpy as np
 from datetime import datetime, timedelta
 from portfolio import Portfolio
 
-DATA_DIR = os.path.expanduser('~/dev/investing/.data/')
-
 TICKERS = [
     "TSLA",
     "OTGLY",

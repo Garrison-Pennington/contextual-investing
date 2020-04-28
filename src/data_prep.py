@@ -4,6 +4,8 @@ from alpha_vantage.timeseries import TimeSeries
 import os
 
 
+DATA_DIR = os.path.expanduser('~/dev/contextual-investing/.data/')
+
 # Loaders
 def historical_data(ticker):
     ts = TimeSeries(key='6LHMANWWZ2Y7DA05', output_format='pandas')
@@ -25,7 +27,7 @@ def fix_keys(df):
 
 def local_stock_data(ticker):
     ticker = ticker.upper()
-    dir = os.path.join(os.path.expanduser('~/dev/investing/.data/'), f"{ticker}.csv")
+    dir = os.path.join(DATA_DIR, f"{ticker}.csv")
     if os.path.exists(dir):
         df = pd.read_csv(dir, index_col=0, parse_dates=True)
     else:
@@ -83,9 +85,8 @@ def add_ndsma(df, num_days=3000):
 
 
 def add_percentages(df):
-    dir = os.path.expanduser('~/dev/investing/.data/')
     metrics = {}
-    for filename in os.listdir(dir):
+    for filename in os.listdir(DATA_DIR):
         if filename.endswith(".csv"):
             data = pd.read_csv(os.path.join(dir, filename))
             metrics[filename[:len(filename)-4]] = fn(data)
@@ -98,7 +99,7 @@ def add_percentages(df):
 
 
 def augment_local_file(ticker, augments, augment_args):
-    filename = os.path.expanduser(f"~/dev/investing/.data/{ticker}.csv")
+    filename = os.path.join(DATA_DIR, f"{ticker}.csv")
     data = pd.read_csv(filename, index_col='date', parse_dates=True)
     for i in range(len(augments)):
         aug = augments[i]
@@ -111,8 +112,7 @@ def augment_local_file(ticker, augments, augment_args):
 
 
 def augment_all(augments, augment_args):
-    dir = os.path.expanduser('~/dev/investing/.data/')
-    for filename in os.listdir(dir):
+    for filename in os.listdir(DATA_DIR):
         if filename.endswith(".csv"):
             augment_local_file(filename[:len(filename)-4], augments, augment_args)
         else:
