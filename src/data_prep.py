@@ -5,10 +5,13 @@ import os
 
 
 # Loaders
-def historical_data_by_ticker(ticker):
+def historical_data(ticker):
     ts = TimeSeries(key='6LHMANWWZ2Y7DA05', output_format='pandas')
-    data, _ = ts.get_daily(symbol=ticker, outputsize='full')
-    data = fix_keys(data)
+    data, metadata = ts.get_daily(symbol=ticker, outputsize='full')
+    cols = {}
+    for k in data:
+        cols[k] = k[3:]
+    data = data.rename(columns=cols)
     return data
 
 
@@ -20,29 +23,30 @@ def fix_keys(df):
     return df.rename(columns=new_keys)
 
 
-def local_stock_data(ticker, augments=[add_percentages, add_sma]):
-    """
-    Loads a local file for a ticker if it exists or downloads it if necessary
-    :param ticker: (str) stock ticker to get data for
-    :return: Pandas dataframe for the ticker
-    """
+def local_stock_data(ticker):
     ticker = ticker.upper()
-    filename = os.path.expanduser(f"~/dev/contextual-investing/.data/{ticker}.csv")
-    if os.path.exists(filename):
-        data = pd.read_csv(filename, index_col='date', parse_dates=True)
+    dir = os.path.join(os.path.expanduser('~/dev/investing/.data/'), f"{ticker}.csv")
+    if os.path.exists(dir):
+        df = pd.read_csv(dir, index_col=0, parse_dates=True)
     else:
-        data = historical_data_by_ticker(ticker)
-        data.to_csv(filename)
-    return data
+        df = historical_data(ticker)
+        df.to_csv(dir)
+    return df
 
 
 # Augments
-def sma(data, num_days):
-    data = np.array(data)
-    sma = np.zeros_like(data)
-    for i in range(num_days, len(data)):
-        sma[i] += np.mean(data[i-num_days:i], 0)
-    return sma
+def sma(df, n_days=200):
+    if f"{n_days} MA" in df:
+        return df
+    else:
+        df = df.iloc[::-1].copy()
+        closes = df['close'].to_numpy()
+        ma = np.zeros((len(df), 1))
+        for i in range(n_days, len(closes)):
+            ma[i] = np.mean(closes[i-n_days:i])
+        df[f"{n_days} MA"] = ma
+        df = df.iloc[::-1]
+        return df
 
 
 def ndsma(data, max_days, step=10):
@@ -69,11 +73,6 @@ def percentages(df):
     return percents
 
 
-def add_sma(df, num_days=200):
-    closes = df['close'].to_numpy()[::-1]
-    avg = sma(closes, num_days)[::-1]
-    df[f"{num_days} MA"] = avg
-    return df
 
 
 def add_ndsma(df, num_days=3000):
@@ -98,19 +97,23 @@ def add_percentages(df):
     return df
 
 
-def augment_local_file(ticker, augments):
+def augment_local_file(ticker, augments, augment_args):
     filename = os.path.expanduser(f"~/dev/investing/.data/{ticker}.csv")
     data = pd.read_csv(filename, index_col='date', parse_dates=True)
-    for aug in augments:
-        data = aug(data)
+    for i in range(len(augments)):
+        aug = augments[i]
+        if not augment_args[i]:
+            data = aug(data)
+        else:
+            data = aug(data, *augment_args[i])
     data.to_csv(filename)
     return data
 
 
-def augment_all(augments):
+def augment_all(augments, augment_args):
     dir = os.path.expanduser('~/dev/investing/.data/')
     for filename in os.listdir(dir):
         if filename.endswith(".csv"):
-            augment_local_file(filename[:len(filename)-4], augments)
+            augment_local_file(filename[:len(filename)-4], augments, augment_args)
         else:
             continue
