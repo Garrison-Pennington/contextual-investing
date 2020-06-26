@@ -1,3 +1,5 @@
+from data_prep import local_stock_data
+
 class Portfolio(object):
     """docstring for portfolio."""
 
@@ -69,3 +71,12 @@ class Portfolio(object):
             f" ${stock['count'] * last_purchase[1]} "
             f"at acquisition")
         print(f"Total portfolio worth ${total_value}")
+
+
+    def current_value_one(dt, ticker):
+        # TODO: Get date's data and get price of holdings in company
+        pass
+
+
+ptf = Portfolio(10000)
+local_stock_data('nvda')
