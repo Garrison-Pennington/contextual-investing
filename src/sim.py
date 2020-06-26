@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime, timedelta
 from portfolio import Portfolio
+from strategy import average_cross, touch_ma, Rule
+from utils import*
+from data_prep import local_stock_data
 
 TICKERS = [
     "TSLA",
@@ -30,9 +33,6 @@ def sim_day(dt, rules=None, ptf=None):
         if dt not in data[k].index:
             continue
         # is the current date on a market break?
-        if data[k].iloc[0][0] == data[k].iloc[1][0]:
-            print(f"Market Break on {dt}")
-            return ptf
         df = data[k]
         for r in rules:
             action = r(df)
@@ -46,10 +46,11 @@ def sim_day(dt, rules=None, ptf=None):
     return ptf
 
 
-def sim(start_date, end_date, rules=[average_cross, touch_ma], ptf=None):
+def sim(start_date, end_date, rules=[average_cross], ptf=None):
     start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
     end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
     current_date = start_date
+    rules = [r() for r in rules]
     while current_date < end_date:
         ptf = sim_day(str(current_date), rules, ptf)
         current_date += timedelta(days=1)
@@ -57,5 +58,8 @@ def sim(start_date, end_date, rules=[average_cross, touch_ma], ptf=None):
 
 
 ac = Portfolio(100000)
-ac = sim('2015-01-01', '2016-01-01', ptf=ac)
+ac = sim('2015-01-01', '2019-01-01', ptf=ac)
 ac.display_portfolio()
+
+# plt.plot(local_stock_data('nvda')["close"])
+# plt.show()
