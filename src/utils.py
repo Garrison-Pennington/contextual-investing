@@ -1,11 +1,24 @@
+import os
+import pandas as pd
+from datetime import datetime
+
+DATA_DIR = os.path.expanduser('~/dev/contextual-investing/.data/')
+
+
 def first_date(df):
     date = str(df.head().index.values[-1])
     return date[:10]
+
 
 def after_date_str(d1, d2):
     d1 = datetime.strptime(d1, "%Y-%m-%d").date()
     d2 = datetime.strptime(d2, "%Y-%m-%d").date()
     return d1 > d2
+
+
+def pandas_dt_to_date(dt):
+    return datetime.strptime(dt, "%Y-%m-%d").date()
+
 
 def todays_data(dt):
     data = {}
