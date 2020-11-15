@@ -1,59 +1,50 @@
-from datetime import timedelta
+import datetime
+from functools import partial
+
+
+from model.market import Market
 from model.portfolio import Portfolio
-from model.strategy import average_cross
-from utils.__init__ import*
-
-TICKERS = [
-    "TSLA",
-    "OTGLY",
-    "SNAP",
-    "ESPO",
-    "VOO",
-    "AAPL",
-    "AAL",
-    "AMD",
-    "MMM",
-    "NVDA",
-    "MSFT"
-]
+from model.strategy import bbands, bband_mask
+from data.data_prep import ma_dev
 
 
+def sim(strategy, date_range=(None, None), portfolio=None, **kwargs):
+    """
+    Simulate an investing strategy over a specified date range
 
-def sim_day(dt, rules=None, ptf=None):
-    data = todays_data(dt)
-    if ptf is None:
-        ptf = Portfolio(int(input("Enter a number for starting capital")))
-    for k in data:
-        if dt not in data[k].index:
-            continue
-        # is the current date on a market break?
-        df = data[k]
-        for r in rules:
-            action = r(df)
+    :param strategy: A function that takes a Market object and outputs a list of trades
+    :param date_range: (start_date, end_date)
+    :type date_range: (datetime.datetime, datetime.datetime)
+    :param portfolio: A Portfolio object to start with
+    :type portfolio: Portfolio
+    :return:
+    """
+    start_date, end_date = date_range
+    portfolio = Portfolio(10000, Market(start_date)) if portfolio is None else portfolio
+    end_date = datetime.datetime.today() if end_date is None else end_date
+    portfolio.log_trades = True
+    portfolio.log_failures = False
+    portfolio.log_daily = True
+    while portfolio.market.today < end_date:
+        for ticker, action in strategy(portfolio.market, **kwargs):
             if action:
-                price = df.at[dt, "close"]
-            if action >= 1:
-                ptf.buy(k, price, int(action), dt)
-            elif action <= -1:
-                ptf.sell(k, price, int(action), dt)
-
-    return ptf
-
-
-def sim(start_date, end_date, rules=[average_cross], ptf=None):
-    start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
-    end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
-    current_date = start_date
-    rules = [r() for r in rules]
-    while current_date < end_date:
-        ptf = sim_day(str(current_date), rules, ptf)
-        current_date += timedelta(days=1)
-    return ptf
+                portfolio.buy(ticker)
+            else:
+                portfolio.sell(ticker)
+        portfolio.next_day()
+    portfolio.summarize_performance()
+    portfolio.graph_value()
+    command = input("Finished? Enter to quit, any other key to debug")
+    while command:
+        command = input()
+        if command:
+            exec(command)
 
 
-ac = Portfolio(100000)
-ac = sim('2015-01-01', '2019-01-01', ptf=ac)
-ac.display_portfolio()
+start, end = datetime.datetime(2000, 1, 25), datetime.datetime(2018, 1, 25)
 
-# plt.plot(local_stock_data('nvda')["close"])
-# plt.show()
+sim(
+    bbands,
+    (start, end),
+    Portfolio(10000, Market(start, augments=[ma_dev, partial(bband_mask, buy=-2, sell=1)]))
+)
