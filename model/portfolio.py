@@ -1,83 +1,96 @@
-from data.data_prep import local_stock_data
+from collections import defaultdict
+import math
+
+import matplotlib.pyplot as plt
+
+from model.market import Market
 
 
 class Portfolio:
-    """docstring for portfolio."""
 
-    def __init__(self, principle):
-        super(Portfolio, self).__init__()
-        self.cash = principle
+    def __init__(self, principle, market):
         self.principle = principle
-        self.assets = {}
+        self.cash = principle
+        self.holdings = defaultdict(int)
+        self.history = []
+        self.market = market
+        self.value_history = defaultdict(float)
+        self.log_trades = False
+        self.log_failures = False
+        self.log_daily = True
+        self.debug = {
+            "failed trades": {
+                "sells": 0,
+                "buys": 0
+            },
+            "executed": {
+                "sells": 0,
+                "buys": 0
+            }
+        }
 
-    def buy(self, ticker, price, count, executed):
-        ticker = ticker.upper()
-        print(count, price)
-        if self.cash - count*price < 0:
-            print(f"{ticker} PURCHASE FAILED: Not enough funds")
-            return -1
+    def buy(self, ticker):
+        price = self.market.current_price(ticker)
+        if self.cash >= price:
+            self.holdings[ticker] += 1
+            self.cash -= price
+            self.history.append((ticker, 'bought', price, self.market.today))
+            self.debug["executed"]["buys"] += 1
+            if self.log_trades:
+                print(f"Bought {ticker} at {price}")
         else:
-            self.cash -= count*price
-        if ticker in self.assets:
-            self.assets[ticker]['count'] += count
-            self.assets[ticker]['purchases'].append((count,
-                                                     price,
-                                                     executed))
+            self.debug["failed trades"]["buys"] += 1
+            if self.log_failures:
+                print(f"Can't buy {ticker} at ${price} with only ${self.cash} available")
+
+    def sell(self, ticker):
+        if self.holdings[ticker] > 0:
+            price = self.market.current_price(ticker)
+            self.holdings[ticker] -= 1
+            self.cash += price
+            self.history.append((ticker, 'sold', price, self.market.today))
+            self.debug["executed"]["sells"] += 1
+            if self.log_trades:
+                print(f"Sold {ticker} at {price}")
         else:
-            self.assets[ticker] = {}
-            self.assets[ticker]['count'] = count
-            self.assets[ticker]['purchases'] = [(count,
-                                                 price,
-                                                 executed)]
-        print(f"Purchased {count} shares of {ticker} for ${price*count} on"
-        f" {executed}")
-        return 1
+            self.debug["failed trades"]["sells"] += 1
+            if self.log_failures:
+                print(f"Don't own any shares of {ticker} to sell")
 
-    def sell(self, ticker, price, count, executed):
-        # Are the shares in the portfolio?
-        ticker = ticker.upper()
-        if ticker in self.assets:
-            if self.assets[ticker]['count'] < count:
-                print(f"SALE FAILED: Can't sell {count} shares of {ticker},"""
-                f" only have {self.assets[ticker]['count']}")
-                return -1
-            else:
-                # Sell all?
-                if count==-1 or count=='all':
-                    count = self.assets[ticker]['count']
-                self.assets[ticker]['count'] -= count  # Deduct the shares
-                # Record the sale
-                if 'sell prices' in self.assets[ticker]:
-                    self.assets[ticker]['sales'].append((count,
-                                                         price,
-                                                         executed))
-                else:
-                    self.assets[ticker]['sales'] = [(count,
-                                                     price,
-                                                     executed)]
-                self.cash += price*count  # Convert to cash
-                print(f"Sold {count} shares of {ticker} for {count*price}")
-                return 1
-        else:
-            print(f"SALE FAILED: No shares of {ticker}")
-            return -1
+    @property
+    def value(self):
+        return sum([self.market.current_price(t) * q for t, q in self.holdings.items()]) + self.cash
 
-    def display_portfolio(self):
-        total_value = self.cash
-        for t in self.assets:
-            stock = self.assets[t]
-            last_purchase = stock['purchases'][len(stock['purchases'])-1]
-            total_value += stock['count'] * last_purchase[1]
-            print(f"{stock['count']} shares of {t} worth a total of"
-            f" ${stock['count'] * last_purchase[1]} "
-            f"at acquisition")
-        print(f"Total portfolio worth ${total_value}")
+    def next_day(self):
+        self.value_history[self.market.today] = self.value
+        if self.log_daily:
+            print(self.market.today, self.value)
+        self.market.next_day()
 
+    def graph_value(self):
+        plt.plot(*zip(*self.value_history.items()))
+        plt.axhline(y=self.principle)
+        plt.show()
 
-    def current_value_one(dt, ticker):
-        # TODO: Get date's data and get price of holdings in company
-        pass
+    def summarize_performance(self):
+        roi = (self.value - self.principle) / self.principle
+        annualized = math.pow(1 + roi, 365 / (self.market.today - self.market.start_date).days) - 1
+        optimal_return = (max(self.value_history.values()) - self.principle) / self.principle - 1
+        print(f"""
+Total ROI: {int(roi * 1000) / 10}%
+Annualized: {int(annualized * 1000) / 10}%
+Total ROI at Peak: {int(optimal_return * 1000) / 10}%
+""")
 
-
-ptf = Portfolio(10000)
-local_stock_data('nvda')
+# test = Portfolio(10000, Market(days_before=365*3))
+#
+# for i in range(600):
+#     if random.random() > .5:
+#         if random.random() > .5:
+#             test.buy("NVDA")
+#         else:
+#             test.sell("NVDA")
+#         print(test.market.today, test.value)
+#     test.next_day()
+#
+# test.graph_value()
