@@ -54,8 +54,6 @@ def percentages(df):
     return percents
 
 
-
-
 def add_ndsma(df, num_days=3000):
     closes = df['close'].to_numpy()[::-1]
     avg = ndsma(closes, num_days)[::-1]
@@ -63,18 +61,19 @@ def add_ndsma(df, num_days=3000):
     return df
 
 
-def add_percentages(df):
-    metrics = {}
-    for filename in os.listdir(DATA_DIR):
-        if filename.endswith(".csv"):
-            data = pd.read_csv(os.path.join(dir, filename))
-            metrics[filename[:len(filename)-4]] = fn(data)
-        else:
-            continue
-    return metrics
-    percents = percentages(df)
-    df['% change'] = percents
-    return df
+def ma_dev(df, short=50, long=200):
+    """
+
+    :param df:
+    :type df: pandas.DataFrame
+    :param short:
+    :param long:
+    :return:
+    """
+    ma = df.rolling(long).mean()
+    std = df.rolling(long).std()
+    normalized = ((df - ma) / std).rolling(short).mean()
+    return df.assign(ma_dev_open=normalized['open'], ma_dev_close=normalized['close'])
 
 
 def augment_local_file(ticker, augments, augment_args):
