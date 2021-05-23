@@ -32,8 +32,8 @@ def sma(df, n_days=200):
 
 def ndsma(data, max_days, step=10):
     ma = np.zeros_like(data)
-    for i in range(1,(max_days//step)+1):
-        ma += sma(data,i*step)
+    for i in range(1, (max_days//step)+1):
+        ma += sma(data, i*step)
     ma /= (max_days//step)
     return ma
 
