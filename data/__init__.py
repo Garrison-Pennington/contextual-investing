@@ -7,10 +7,11 @@ from alpha_vantage.timeseries import TimeSeries
 
 import pandas as pd
 
-DATA_DIR = Path.expanduser(Path("~/src/contextual-investing/.data/"))
+DATA_DIR = Path.expanduser(Path("~/.data/contextual-investing/"))
 IDX_DIR = DATA_DIR.joinpath('indices/')
 STOCK_DIR = DATA_DIR.joinpath('stocks/')
 TWITTER_DIR = DATA_DIR.joinpath('twitter/')
+MODEL_DIR = Path.expanduser(Path("~/.models/"))
 
 
 def all_local_data():
